@@ -16,26 +16,28 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [fallbackLoaded]);
 
-  function start() {
+  function start(restart: boolean) {
     const player = video.current;
     if (!player) return;
     player.muted = true;
-    player.currentTime = 0;
+    if (restart) player.currentTime = 0;
+    if (player.ended && !restart) { setPlaying(false); return; }
     void player.play().catch(() => setFallback(true));
   }
 
   useEffect(() => {
-    function begin() {
+    function begin(restart = false) {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        video.current?.pause();
         setPlaying(false);
       } else {
-        start();
+        start(restart);
       }
     }
     function restore(event: PageTransitionEvent) {
-      if (event.persisted) begin();
+      if (event.persisted) begin(true);
     }
-    const frame = requestAnimationFrame(begin);
+    const frame = requestAnimationFrame(() => begin());
     window.addEventListener("pageshow", restore);
     return () => {
       cancelAnimationFrame(frame);
@@ -50,17 +52,13 @@ export default function Home() {
         <Image src="/interier-animace.webp" alt="" fill unoptimized loading="eager" className="intro-video"
           onLoad={() => setFallbackLoaded(true)} onError={() => setPlaying(false)} />
       ) : (
-      <video ref={video} className="intro-video"
+      <video ref={video} className="intro-video" autoPlay src="/uvod-hd.mp4"
         poster="/uvod-start.jpg" preload="auto" muted playsInline aria-hidden="true"
         onPlaying={() => setPlaying(true)} onEnded={() => setPlaying(false)}
-        onError={() => setFallback(true)}>
-        <source src="/uvod-5s.mp4" media="(max-width: 600px) and (max-resolution: 1dppx)" type="video/mp4" />
-        <source src="/uvod-hd.mp4" type="video/mp4" onError={() => setFallback(true)} />
-      </video>
+        onError={() => setFallback(true)} />
       )}
 
       <div className="welcome" inert={playing} data-playing={playing}>
-        <a className="contact-link" href="#kontakt">Kontakt</a>
         <div className="welcome-title">
           <div className="brand">VOKALOVA.ARCHI</div>
           <h1>Vítejte</h1>
