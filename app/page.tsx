@@ -1,105 +1,90 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
-  const video = useRef<HTMLVideoElement>(null);
-  const [playing, setPlaying] = useState(true);
-
-  const [fallback, setFallback] = useState(false);
-  const [fallbackLoaded, setFallbackLoaded] = useState(false);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [finished, setFinished] = useState(false);
 
   useEffect(() => {
-    if (!fallbackLoaded) return;
-    const timer = window.setTimeout(() => setPlaying(false), 5000);
-    return () => clearTimeout(timer);
-  }, [fallbackLoaded]);
+    const context = canvas.current?.getContext("2d");
+    if (!context) return;
 
-  useEffect(() => {
-    const player = video.current;
-    if (!player || fallback) return;
+    // Decode offscreen so the browser never overlays playback controls on the hero.
+    const decoder = document.createElement("video");
+    decoder.muted = true;
+    decoder.playsInline = true;
+    decoder.preload = "auto";
+    let frame = 0;
+    let startTime = 0;
+    let previousTime = -1;
+    let done = false;
+    let timeout = 0;
 
-    let timer = 0;
-    let manuallySeeking = false;
-    let lastTime = player.currentTime;
-    let lastAdvance = performance.now();
-    let lastTick = lastAdvance;
-    let lastSeek = lastAdvance;
-
-    function watch() {
-      if (!player || document.hidden) return;
-      const now = performance.now();
-      const delta = Math.min((now - lastTick) / 1000, 0.15);
-      lastTick = now;
-
-      if (player.ended || (manuallySeeking && player.currentTime >= player.duration - 0.04)) {
-        setPlaying(false);
-        window.clearInterval(timer);
-        return;
-      }
-      if (player.readyState < 2 || !Number.isFinite(player.duration)) return;
-
-      if (lastTime !== player.currentTime) {
-        lastTime = player.currentTime;
-        lastAdvance = now;
-      }
-      if (!manuallySeeking && now - lastAdvance > 800) {
-        manuallySeeking = true;
-        player.pause();
-        lastSeek = now;
-      }
-      if (manuallySeeking && !player.seeking) {
-        player.currentTime = Math.min(player.duration - 0.02, player.currentTime + delta);
-        lastSeek = now;
-      } else if (manuallySeeking && now - lastSeek > 2000) {
-        setFallback(true);
-      }
+    function finish() {
+      done = true;
+      decoder.pause();
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+      setFinished(true);
     }
 
-    function begin() {
-      if (!player) return;
-      setPlaying(true);
-      manuallySeeking = false;
-      lastAdvance = lastTick = lastSeek = performance.now();
-      player.muted = true;
-      void player.play().catch(() => {
-        // Seeking can display successive frames even when Safari blocks autoplay.
-        manuallySeeking = true;
-        lastSeek = performance.now();
-      });
-      window.clearInterval(timer);
-      timer = window.setInterval(watch, 50);
+    function render(now: number) {
+      if (done || !context) return;
+      if (decoder.readyState >= 2 && !decoder.seeking) {
+        if (!startTime) startTime = now;
+        if (previousTime !== decoder.currentTime) {
+          context.drawImage(decoder, 0, 0, 1080, 1080);
+          previousTime = decoder.currentTime;
+        }
+        const elapsed = (now - startTime) / 1000;
+        if (decoder.ended || elapsed >= decoder.duration) {
+          finish();
+          return;
+        }
+        if (elapsed - decoder.currentTime > 0.1) decoder.currentTime = elapsed;
+      }
+      frame = requestAnimationFrame(render);
+    }
+
+    function start() {
+      done = false;
+      previousTime = -1;
+      startTime = 0;
+      setFinished(false);
+      context?.clearRect(0, 0, 1080, 1080);
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+      decoder.load();
+      void decoder.play().catch(() => { /* render advances frames when autoplay is blocked */ });
+      frame = requestAnimationFrame(render);
+      timeout = window.setTimeout(finish, 18000);
     }
 
     function restore(event: PageTransitionEvent) {
-      if (event.persisted && player) {
-        player.currentTime = 0;
-        begin();
-      }
+      if (event.persisted) start();
     }
-    begin();
+    decoder.src = "/atelier-intro.mp4";
+    decoder.addEventListener("error", finish);
     window.addEventListener("pageshow", restore);
+    start();
     return () => {
-      window.clearInterval(timer);
+      done = true;
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+      decoder.removeEventListener("error", finish);
       window.removeEventListener("pageshow", restore);
+      decoder.pause();
+      decoder.removeAttribute("src");
+      decoder.load();
     };
-  }, [fallback]);
+  }, []);
 
   return (
     <main>
-      <section className="landing-page">
-      {fallback ? (
-        <Image src="/interier-animace.webp" alt="" fill unoptimized loading="eager" className="intro-video"
-          onLoad={() => setFallbackLoaded(true)} onError={() => setPlaying(false)} />
-      ) : (
-      <video ref={video} className="intro-video" autoPlay src="/uvod-hd.mp4"
-        poster="/uvod-start.jpg" preload="auto" muted playsInline aria-hidden="true"
-        onPlaying={() => setPlaying(true)} onEnded={() => setPlaying(false)}
-        onError={() => setFallback(true)} />
-      )}
-
-      <div className="welcome" inert={playing} data-playing={playing}>
+      <section className="landing-page" data-finished={finished}>
+        <canvas ref={canvas} width={1080} height={1080} className="intro-video" aria-hidden="true" />
+      <div className="welcome" inert={!finished} data-playing={!finished}>
         <div className="welcome-title">
           <div className="brand">VOKALOVA.ARCHI</div>
           <h1>Vítejte</h1>
