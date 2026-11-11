@@ -16,34 +16,75 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [fallbackLoaded]);
 
-  function start(restart: boolean) {
-    const player = video.current;
-    if (!player) return;
-    player.muted = true;
-    if (restart) player.currentTime = 0;
-    if (player.ended && !restart) { setPlaying(false); return; }
-    void player.play().catch(() => setFallback(true));
-  }
-
   useEffect(() => {
-    function begin(restart = false) {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        video.current?.pause();
+    const player = video.current;
+    if (!player || fallback) return;
+
+    let timer = 0;
+    let manuallySeeking = false;
+    let lastTime = player.currentTime;
+    let lastAdvance = performance.now();
+    let lastTick = lastAdvance;
+    let lastSeek = lastAdvance;
+
+    function watch() {
+      if (!player || document.hidden) return;
+      const now = performance.now();
+      const delta = Math.min((now - lastTick) / 1000, 0.15);
+      lastTick = now;
+
+      if (player.ended || (manuallySeeking && player.currentTime >= player.duration - 0.04)) {
         setPlaying(false);
-      } else {
-        start(restart);
+        window.clearInterval(timer);
+        return;
+      }
+      if (player.readyState < 2 || !Number.isFinite(player.duration)) return;
+
+      if (lastTime !== player.currentTime) {
+        lastTime = player.currentTime;
+        lastAdvance = now;
+      }
+      if (!manuallySeeking && now - lastAdvance > 800) {
+        manuallySeeking = true;
+        player.pause();
+        lastSeek = now;
+      }
+      if (manuallySeeking && !player.seeking) {
+        player.currentTime = Math.min(player.duration - 0.02, player.currentTime + delta);
+        lastSeek = now;
+      } else if (manuallySeeking && now - lastSeek > 2000) {
+        setFallback(true);
       }
     }
-    function restore(event: PageTransitionEvent) {
-      if (event.persisted) begin(true);
+
+    function begin() {
+      if (!player) return;
+      setPlaying(true);
+      manuallySeeking = false;
+      lastAdvance = lastTick = lastSeek = performance.now();
+      player.muted = true;
+      void player.play().catch(() => {
+        // Seeking can display successive frames even when Safari blocks autoplay.
+        manuallySeeking = true;
+        lastSeek = performance.now();
+      });
+      window.clearInterval(timer);
+      timer = window.setInterval(watch, 50);
     }
-    const frame = requestAnimationFrame(() => begin());
+
+    function restore(event: PageTransitionEvent) {
+      if (event.persisted && player) {
+        player.currentTime = 0;
+        begin();
+      }
+    }
+    begin();
     window.addEventListener("pageshow", restore);
     return () => {
-      cancelAnimationFrame(frame);
+      window.clearInterval(timer);
       window.removeEventListener("pageshow", restore);
     };
-  }, []);
+  }, [fallback]);
 
   return (
     <main>
