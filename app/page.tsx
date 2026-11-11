@@ -1,44 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  const video = useRef<HTMLVideoElement>(null);
+  const [loaded, setLoaded] = useState(false);
   const [playing, setPlaying] = useState(true);
 
   useEffect(() => {
-    const player = video.current;
-    if (!player) return;
-    let active = true;
-    function finish() {
-      if (active) {
-        setPlaying(false);
-        player?.pause();
-      }
-    }
-
-    const timeout = window.setTimeout(finish, 6500);
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const frame = requestAnimationFrame(() => {
-      if (reducedMotion) return finish();
-      player.muted = true;
-      player.src = "/padani.mp4";
-      void player.play().catch(finish);
-    });
-
-    return () => {
-      active = false;
-      clearTimeout(timeout);
-      cancelAnimationFrame(frame);
-    };
-  }, []);
+    if (!loaded) return;
+    const timeout = window.setTimeout(() => setPlaying(false), 5000);
+    return () => clearTimeout(timeout);
+  }, [loaded]);
 
   return (
     <main>
       <section className="landing-page">
-      <video hidden={!playing} ref={video} className="intro-video" muted playsInline aria-hidden="true"
-        onEnded={() => setPlaying(false)}
-        onError={() => setPlaying(false)} />
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcSet="/interier-final.jpg" />
+        <Image src="/interier-animace.webp" alt="" fill unoptimized loading="eager"
+        fetchPriority="high" className="intro-video"
+        onLoad={() => {
+          if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(false);
+          else setLoaded(true);
+        }} onError={() => setPlaying(false)} />
+      </picture>
 
       <div className="welcome" inert={playing} data-playing={playing}>
         <a className="contact-link" href="#kontakt">Kontakt</a>
