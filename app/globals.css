@@ -9,6 +9,7 @@ body {
 
 .landing-page {
   position: relative;
+  background: #17120f url("/interier-final.jpg") center / cover no-repeat;
   height: 100vh;
   height: 100dvh;
 }

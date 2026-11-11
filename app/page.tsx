@@ -8,19 +8,36 @@ export default function Home() {
 
   useEffect(() => {
     const player = video.current;
-    if (!player || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const frame = requestAnimationFrame(() => setPlaying(false));
-      return () => cancelAnimationFrame(frame);
+    if (!player) return;
+    let active = true;
+    function finish() {
+      if (active) {
+        setPlaying(false);
+        player?.pause();
+      }
     }
-    player.src = "/padani.mp4";
-    void player.play().catch(() => setPlaying(false));
+
+    const timeout = window.setTimeout(finish, 6500);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const frame = requestAnimationFrame(() => {
+      if (reducedMotion) return finish();
+      player.muted = true;
+      player.src = "/padani.mp4";
+      void player.play().catch(finish);
+    });
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   return (
     <main>
       <section className="landing-page">
-      <video ref={video} className="intro-video" muted playsInline aria-hidden="true"
-        onPlaying={() => setPlaying(true)} onEnded={() => setPlaying(false)}
+      <video hidden={!playing} ref={video} className="intro-video" muted playsInline aria-hidden="true"
+        onEnded={() => setPlaying(false)}
         onError={() => setPlaying(false)} />
 
       <div className="welcome" inert={playing} data-playing={playing}>
