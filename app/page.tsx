@@ -1,32 +1,48 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
-  const [loaded, setLoaded] = useState(false);
+  const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(true);
 
+  function start() {
+    const player = video.current;
+    if (!player) return;
+    player.muted = true;
+    player.currentTime = 0;
+    void player.play().catch(() => setPlaying(false));
+  }
+
   useEffect(() => {
-    if (!loaded) return;
-    const timeout = window.setTimeout(() => setPlaying(false), 5000);
-    return () => clearTimeout(timeout);
-  }, [loaded]);
+    function begin() {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setPlaying(false);
+      } else {
+        start();
+      }
+    }
+    function restore(event: PageTransitionEvent) {
+      if (event.persisted) begin();
+    }
+    const frame = requestAnimationFrame(begin);
+    window.addEventListener("pageshow", restore);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pageshow", restore);
+    };
+  }, []);
 
   return (
     <main>
       <section className="landing-page">
-      <picture>
-        <source media="(prefers-reduced-motion: reduce)" srcSet="/interier-final.jpg" />
-        <Image src="/interier-animace.webp" alt="" fill unoptimized loading="eager"
-        fetchPriority="high" className="intro-video"
-        onLoad={() => {
-          if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(false);
-          else setLoaded(true);
-        }} onError={() => setPlaying(false)} />
-      </picture>
+      <video ref={video} className="intro-video" src="/uvod-5s.mp4"
+        poster="/uvod-start.jpg" preload="auto" muted playsInline aria-hidden="true"
+        onPlaying={() => setPlaying(true)} onEnded={() => setPlaying(false)}
+        onError={() => setPlaying(false)} onPause={() => setPlaying(false)} />
 
       <div className="welcome" inert={playing} data-playing={playing}>
+        <button className="replay" type="button" onClick={start}>Přehrát animaci</button>
         <a className="contact-link" href="#kontakt">Kontakt</a>
         <div className="welcome-title">
           <div className="brand">VOKALOVA.ARCHI</div>
