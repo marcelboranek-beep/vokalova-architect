@@ -44,3 +44,24 @@ a { color: inherit; text-decoration: underline; text-underline-offset: .25em; }
 .landing-page { background: #17120f url("/uvod-start.jpg") center / cover no-repeat; }
 .landing-page[data-finished="true"] { background-image: url("/atelier-final.jpg"); }
 .landing-page[data-finished="true"] canvas { visibility: hidden; }
+
+.wordmark { position: fixed; z-index: 5; top: calc(50% - clamp(32px,4vw,60px)); right: 50%; transform: translate(50%,-50%); font-size: clamp(18px,2.4vw,38px); letter-spacing: .25em; text-decoration: none; font-weight: 300; color: white; text-shadow: 0 1px 8px #261d17; opacity: 0; transition: opacity .5s, top .9s ease-in-out, right .9s ease-in-out, transform .9s ease-in-out, font-size .9s; }
+.wordmark[data-visible="true"] { opacity: 1; }
+main[data-docked="true"] .wordmark { top: max(20px,env(safe-area-inset-top)); right: 5vw; transform: none; font-size: clamp(15px,1.4vw,22px); background: #231e19e8; padding: 7px 12px; }
+main[data-docked="true"] .welcome { opacity: 0; pointer-events: none; }
+.site-menu { position: fixed; top: max(20px,env(safe-area-inset-top)); left: 5vw; z-index: 6; color: #fff; background: #231e19f5; }
+.site-menu button, .site-menu a { display: block; padding: 8px 16px; cursor: pointer; }
+.site-menu nav { padding: 3px 12px 12px; }
+.editorial, .project-detail { background: #ede9e1; color: #29251f; }
+.editorial { display: grid; grid-template-columns: 1fr 2fr; gap: 5vw; padding: clamp(60px,8vw,140px) 6vw; border-bottom: 1px solid #c8c1b7; scroll-margin-top: 55px; }
+.editorial h2 { font-size: 1.12rem; }
+.editorial h3, .project-detail h1 { font-weight: 300; font-size: clamp(36px,5vw,78px); line-height: 1.06; }
+.editorial p, .project-detail p { max-width: 48ch; line-height: 1.6; margin: 20px 0; }
+.project-card { display: block; text-decoration: none; }
+.project-card img { width: 100%; aspect-ratio: 3/2; object-fit: cover; }
+.project-card span { display: block; margin-top: 16px; font-size: 1.6rem; }
+.project-detail { padding: 30px 6vw 60px; }
+.project-detail header { display: flex; justify-content: space-between; margin-bottom: 10vh; }
+.project-detail img { width: min(100%,1080px); margin: 30px auto; }
+@media(max-width:700px){ .editorial { grid-template-columns: 1fr; gap: 24px; } }
+@media(prefers-reduced-motion:reduce){ .wordmark { transition: none; } }

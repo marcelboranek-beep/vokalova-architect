@@ -1,10 +1,22 @@
 "use client";
 
+import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [finished, setFinished] = useState(false);
+
+  const [docked, setDocked] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!finished) return;
+    const timer = window.setTimeout(() => setDocked(true), 1450);
+    return () => window.clearTimeout(timer);
+  }, [finished]);
 
   useEffect(() => {
     const context = canvas.current?.getContext("2d");
@@ -52,6 +64,8 @@ export default function Home() {
       previousTime = -1;
       startTime = 0;
       setFinished(false);
+      setDocked(false);
+      setMenuOpen(false);
       context?.clearRect(0, 0, 1080, 1080);
       cancelAnimationFrame(frame);
       clearTimeout(timeout);
@@ -81,15 +95,43 @@ export default function Home() {
   }, []);
 
   return (
-    <main>
+    <main id="uvod" data-docked={docked}>
+      <a className="wordmark" data-visible={finished} href="#uvod" inert={!finished}>VOKALOVA.ARCHI</a>
+      <div className="site-menu" hidden={!docked} onKeyDown={event => {
+        if (event.key === "Escape") {
+          setMenuOpen(false);
+          menuButton.current?.focus();
+        }
+      }}>
+        <button ref={menuButton} aria-expanded={menuOpen} aria-controls="navigation" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? "Zavřít" : "Menu"}</button>
+        <nav id="navigation" aria-label="Hlavní navigace" hidden={!menuOpen} onClick={() => setMenuOpen(false)}>
+          <a href="#atelier">Ateliér</a><a href="#spoluprace">Spolupráce</a><a href="#projekty">Projekty</a><a href="#kontakt">Kontakt</a>
+        </nav>
+      </div>
       <section className="landing-page" data-finished={finished}>
         <canvas ref={canvas} width={1080} height={1080} className="intro-video" aria-hidden="true" />
       <div className="welcome" inert={!finished} data-playing={!finished}>
         <div className="welcome-title">
-          <div className="brand">VOKALOVA.ARCHI</div>
+
           <h1>Vítejte</h1>
         </div>
       </div>
+      </section>
+      <section className="editorial" id="atelier">
+        <h2>Ateliér</h2>
+        <div><h3>Romana Vokálová</h3><p>Architektura a interiéry.</p>
+        <a href="https://www.instagram.com/vokalova.archi/">Instagram @vokalova.archi ↗</a></div>
+      </section>
+      <section className="editorial" id="spoluprace">
+        <h2>Spolupráce</h2>
+        <div><h3>První setkání</h3><p>Jaký prostor řešíte a co by se v něm mělo změnit? Napište pár slov o své představě. Pokud máte půdorys nebo fotografie, můžete je přiložit.</p><a href="#kontakt">Spojit se s ateliérem ↓</a></div>
+      </section>
+      <section className="editorial" id="projekty">
+        <h2>Projekty</h2>
+        <Link className="project-card" href="/projekty/obytny-interier">
+          <Image src="/atelier-final.jpg" width={2160} height={2160} alt="Obytný prostor s kamenným kuchyňským ostrůvkem a nízkými stolky" sizes="(max-width: 700px) 92vw, 65vw" />
+          <span>Obytný interiér ↗</span><small>Vizualizace</small>
+        </Link>
       </section>
       <footer id="kontakt" aria-labelledby="kontakt-title">
         <h2 id="kontakt-title">Kontakt</h2>
